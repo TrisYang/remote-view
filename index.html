@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>文档预览</title>
+<style>
+:root{--bg:#f6f7f9;--panel:#fff;--ink:#111827;--mute:#6b7280;--line:#e5e7eb;--accent:#2563eb;--tint:#eff6ff;--danger:#b91c1c}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue",sans-serif;-webkit-text-size-adjust:100%}
+button,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+.app{display:grid;grid-template-rows:48px minmax(0,1fr);grid-template-columns:minmax(0,1fr);height:100vh;height:100dvh}
+.bar{display:flex;align-items:center;gap:4px;min-width:0;padding:0 8px;background:var(--panel);border-bottom:.5px solid var(--line)}
+.title{flex:1;min-width:0;margin:0;padding:0 8px;font-size:16px;font-weight:600;line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:4px;height:40px;padding:0 12px;border:.5px solid var(--line);border-radius:6px;background:var(--panel);cursor:pointer;white-space:nowrap}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.primary{border-color:var(--accent);background:var(--accent);color:#fff}
+.btn:disabled{opacity:.5;cursor:default}
+@media (hover:hover){.btn.ghost:hover{background:var(--bg)}.item:hover{background:var(--bg)}}
+
+.side{display:none;flex-direction:column;min-height:0;background:var(--panel)}
+.files,.cmts{position:fixed;inset:48px 0 0 0;z-index:2}
+.app[data-panel="files"] .files,.app[data-panel="comments"] .cmts{display:flex}
+.side-head{display:flex;flex-direction:column;gap:8px;padding:12px;border-bottom:.5px solid var(--line)}
+.note{margin:0;font-size:12px;color:var(--danger);overflow-wrap:anywhere;white-space:pre-line}
+.note:empty{display:none}
+
+.list{flex:1;margin:0;padding:4px 0;list-style:none;overflow:auto}
+.item{display:block;width:100%;padding:10px 12px;border:0;background:transparent;text-align:left;cursor:pointer}
+.item[aria-current="true"]{background:var(--tint)}
+.item .name{display:block;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .meta{display:flex;gap:8px;font-size:12px;color:var(--mute)}
+.side-foot{padding:4px 12px 12px}
+.side-foot .btn{width:100%;color:var(--mute)}
+
+.stage{position:relative;min-height:0;background:var(--panel)}
+#frame{position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff}
+.empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;color:var(--mute)}
+.empty p{margin:0}
+#drop{position:absolute;inset:8px;z-index:1;display:none;align-items:center;justify-content:center;border:.5px dashed var(--accent);border-radius:6px;background:rgba(246,247,249,.92);color:var(--accent);font-weight:600}
+.app.drag #drop{display:flex}
+
+.token{display:flex;flex-direction:column;gap:8px;width:100%;max-width:360px;color:var(--ink)}
+.token label{font-weight:600}
+.token input{height:40px;padding:0 10px;border:.5px solid var(--line);border-radius:6px;background:var(--panel);font-size:16px}
+
+.cmt-list{flex:1;display:flex;flex-direction:column;gap:12px;margin:0;padding:12px;list-style:none;overflow:auto}
+.who{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--mute)}
+.who b{font-weight:600;color:var(--ink)}
+.cmt.ai .who b{color:var(--accent)}
+.cmt p{margin:2px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.cmt-form{display:flex;flex-direction:column;gap:8px;padding:12px;border-top:.5px solid var(--line)}
+.cmt-form .btn{align-self:flex-end}
+textarea{display:block;width:100%;padding:8px 10px;border:.5px solid var(--line);border-radius:6px;background:var(--panel);font-size:16px;line-height:1.5;resize:none}
+
+@media (min-width:900px){
+  .app{grid-template-columns:260px minmax(0,1fr) 320px}
+  .bar{grid-column:1/-1}
+  .side{display:flex;position:static;z-index:auto}
+  .files{border-right:.5px solid var(--line)}
+  .cmts{border-left:.5px solid var(--line)}
+  #btnFiles,#btnComments{display:none}
+}
+</style>
+</head>
+<body>
+<div class="app" id="app" data-panel="">
+  <header class="bar">
+    <button class="btn ghost" id="btnFiles" type="button" aria-expanded="false">文件</button>
+    <h1 class="title" id="title">文档预览</h1>
+    <button class="btn ghost" id="btnRefresh" type="button">刷新</button>
+    <button class="btn ghost" id="btnComments" type="button" aria-expanded="false">评论<span id="cCount"></span></button>
+  </header>
+
+  <aside class="side files" id="files" aria-label="文件">
+    <div class="side-head">
+      <button class="btn primary" id="btnUpload" type="button">上传文件</button>
+      <p class="note" id="note" role="status"></p>
+    </div>
+    <ul class="list" id="fileList"></ul>
+    <div class="side-foot">
+      <button class="btn ghost" id="btnToken" type="button">更换令牌</button>
+    </div>
+  </aside>
+
+  <main class="stage" id="stage">
+    <iframe id="frame" title="文档预览" hidden></iframe>
+    <div class="empty" id="empty">
+      <p id="emptyMsg" role="status"></p>
+      <button class="btn primary" id="btnPick" type="button" hidden>选择文件</button>
+      <form class="token" id="tokenForm" hidden>
+        <label for="tokenInput">访问令牌</label>
+        <input id="tokenInput" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_">
+        <button class="btn primary" type="submit">保存</button>
+        <p class="note" id="tokenNote" role="status"></p>
+      </form>
+    </div>
+    <div id="drop">松开上传</div>
+  </main>
+
+  <aside class="side cmts" id="comments" aria-label="评论">
+    <ul class="cmt-list" id="cmtList" role="log" aria-live="polite"></ul>
+    <form class="cmt-form" id="cmtForm">
+      <textarea id="cmtText" rows="3" maxlength="2000" placeholder="写评论" aria-label="评论内容"></textarea>
+      <button class="btn primary" type="submit">发送</button>
+    </form>
+  </aside>
+</div>
+<input type="file" id="picker" multiple hidden accept=".md,.markdown,.html,.htm,.png,.jpg,.jpeg,.gif,.webp,.avif,.svg">
+
+<script src="marked.umd.js"></script>
+<script>
+// 文档和评论存在私有仓库 TrisYang/Remote 的 store 分支，页面用访问令牌直接调 GitHub API 读写。
+const REPO_API = 'https://api.github.com/repos/TrisYang/Remote';
+const BRANCH = 'store';
+const MAX_FILE = 20 * 1024 * 1024;
+const MAX_COMMENT = 2000;
+
+const TYPES = {
+  md: ['md', 'text/markdown'],
+  markdown: ['md', 'text/markdown'],
+  html: ['html', 'text/html'],
+  htm: ['html', 'text/html'],
+  png: ['img', 'image/png'],
+  jpg: ['img', 'image/jpeg'],
+  jpeg: ['img', 'image/jpeg'],
+  gif: ['img', 'image/gif'],
+  webp: ['img', 'image/webp'],
+  avif: ['img', 'image/avif'],
+  svg: ['img', 'image/svg+xml'],
+};
+const KIND = { md: 'MD', html: 'HTML', img: '图片' };
+const ROLE = { user: '我', ai: 'Claude' };
+
+const MD_CSS = `
+:root{color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:#fff;color:#111827;font:16px/1.75 -apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue",sans-serif;-webkit-text-size-adjust:100%}
+.md{max-width:760px;margin:0 auto;padding:24px 16px 64px;overflow-wrap:anywhere}
+.md h1{font-size:24px;line-height:1.35;margin:0 0 16px}
+.md h2{font-size:18px;line-height:1.4;margin:32px 0 12px}
+.md h3,.md h4,.md h5,.md h6{font-size:16px;margin:24px 0 8px}
+.md p,.md ul,.md ol,.md pre,.md table,.md blockquote{margin:0 0 16px}
+.md ul,.md ol{padding-left:1.5em}
+.md a{color:#2563eb}
+.md code{font:14px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;background:#f3f4f6;padding:1px 4px;border-radius:4px}
+.md pre{background:#f6f7f9;border:.5px solid #e5e7eb;border-radius:6px;padding:12px;overflow-x:auto}
+.md pre code{background:none;padding:0}
+.md blockquote{background:#f6f7f9;padding:8px 12px;color:#4b5563}
+.md blockquote>:last-child{margin-bottom:0}
+.md table{display:block;overflow-x:auto;border-collapse:collapse;font-size:14px}
+.md th,.md td{border:.5px solid #d1d5db;padding:6px 10px;text-align:left}
+.md th{background:#f6f7f9}
+.md img{max-width:100%;height:auto}
+.md hr{border:0;border-top:.5px solid #e5e7eb;margin:24px 0}
+`;
+const IMG_CSS = `
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f6f7f9}
+img{display:block;max-width:100%;max-height:100vh;object-fit:contain}
+`;
+
+const $ = (s) => document.querySelector(s);
+const app = $('#app');
+let frame = $('#frame');
+
+let TOKEN = '';
+try {
+  TOKEN = localStorage.getItem('rv-token') || '';
+} catch {}
+
+let head = null;
+let files = [];
+let cur = null;
+let shown = null;
+let cmtFor = null;
+let cmtKey = '';
+let busy = false;
+let again = false;
+
+const el = (tag, cls, text) => {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+};
+const pad = (n) => String(n).padStart(2, '0');
+const fmt = (ts) => {
+  const d = new Date(ts);
+  return `${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const rand = (n) => [...crypto.getRandomValues(new Uint8Array(n))].map((b) => b.toString(16).padStart(2, '0')).join('');
+
+const fromB64 = (b64) => Uint8Array.from(atob(b64.replace(/\s/g, '')), (c) => c.charCodeAt(0));
+function toB64(bytes) {
+  let s = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+const utf8 = new TextDecoder();
+const textOf = (bytes) => utf8.decode(bytes).replace(/^\ufeff/, '');
+const jsonB64 = (obj) => toB64(new TextEncoder().encode(JSON.stringify(obj) + '\n'));
+
+async function gh(path, opts = {}) {
+  const headers = { Accept: 'application/vnd.github+json', Authorization: `Bearer ${TOKEN}`, 'X-GitHub-Api-Version': '2022-11-28' };
+  if (opts.body) headers['Content-Type'] = 'application/json';
+  const r = await fetch(REPO_API + path, { cache: 'no-store', ...opts, headers });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const e = new Error(r.status === 403 && /rate limit/i.test(j.message || '') ? '请求太频繁，稍后再试' : j.message || '请求失败');
+    e.status = r.status;
+    throw e;
+  }
+  return j;
+}
+
+// blob 按 sha 寻址，内容不可变，取过一次就缓存
+const blobs = new Map();
+async function blob(sha) {
+  if (!blobs.has(sha)) blobs.set(sha, gh(`/git/blobs/${sha}`).then((j) => fromB64(j.content)).catch((e) => (blobs.delete(sha), Promise.reject(e))));
+  return blobs.get(sha);
+}
+
+async function load(force) {
+  const sha = (await gh(`/git/ref/heads/${BRANCH}`)).object.sha;
+  if (!force && sha === head) return false;
+  const tree = await gh(`/git/trees/${sha}?recursive=1`);
+  const docs = {};
+  const cmts = {};
+  for (const e of tree.tree) {
+    if (e.type !== 'blob') continue;
+    let m;
+    if ((m = e.path.match(/^docs\/([0-9a-f]{10})\/(data|meta\.json)$/))) (docs[m[1]] ||= { id: m[1] })[m[2] === 'data' ? 'dataSha' : 'metaSha'] = e.sha;
+    else if ((m = e.path.match(/^comments\/([0-9a-f]{10})\/[^/]+\.json$/))) (cmts[m[1]] ||= []).push({ path: e.path, sha: e.sha });
+  }
+  const list = await Promise.all(
+    Object.values(docs)
+      .filter((d) => d.dataSha && d.metaSha)
+      .map(async (d) => {
+        try {
+          const meta = JSON.parse(textOf(await blob(d.metaSha)));
+          return { ...meta, ...d, cmts: (cmts[d.id] || []).sort((a, b) => (a.path < b.path ? -1 : 1)) };
+        } catch {
+          return null;
+        }
+      })
+  );
+  files = list.filter(Boolean).sort((a, b) => b.updated - a.updated);
+  head = sha;
+  return true;
+}
+
+// 一次提交写入多个文件；分支被别处先推进时（网页和本机同时写）重取最新再提交
+async function commit(entries, message) {
+  const tree = await Promise.all(
+    entries.map(async (e) => ({
+      path: e.path,
+      mode: '100644',
+      type: 'blob',
+      sha: (await gh('/git/blobs', { method: 'POST', body: JSON.stringify({ content: e.b64, encoding: 'base64' }) })).sha,
+    }))
+  );
+  for (let i = 0; ; i++) {
+    const base = (await gh(`/git/ref/heads/${BRANCH}`)).object.sha;
+    const baseTree = (await gh(`/git/commits/${base}`)).tree.sha;
+    const t = await gh('/git/trees', { method: 'POST', body: JSON.stringify({ base_tree: baseTree, tree }) });
+    const c = await gh('/git/commits', { method: 'POST', body: JSON.stringify({ message, tree: t.sha, parents: [base] }) });
+    try {
+      await gh(`/git/refs/heads/${BRANCH}`, { method: 'PATCH', body: JSON.stringify({ sha: c.sha }) });
+      return;
+    } catch (e) {
+      if (e.status !== 422 || i >= 4) throw e;
+    }
+  }
+}
+
+function panel(name) {
+  app.dataset.panel = name;
+  $('#btnFiles').setAttribute('aria-expanded', String(name === 'files'));
+  $('#btnComments').setAttribute('aria-expanded', String(name === 'comments'));
+}
+const togglePanel = (name) => panel(app.dataset.panel === name ? '' : name);
+
+function showEmpty(msg, pick) {
+  $('#emptyMsg').textContent = msg || '';
+  $('#btnPick').hidden = !pick;
+}
+
+function askToken(msg) {
+  TOKEN = '';
+  head = null;
+  files = [];
+  cur = null;
+  renderList();
+  renderStage();
+  renderComments([], true);
+  showEmpty('');
+  $('#tokenForm').hidden = false;
+  $('#tokenNote').textContent = msg || '';
+  panel('');
+}
+
+function renderList() {
+  const ul = $('#fileList');
+  ul.replaceChildren();
+  for (const f of files) {
+    const li = el('li');
+    const b = el('button', 'item');
+    b.type = 'button';
+    if (f.id === cur) b.setAttribute('aria-current', 'true');
+    const meta = el('span', 'meta');
+    meta.append(el('span', null, KIND[f.kind] || f.kind), el('span', null, fmt(f.updated)));
+    if (f.cmts.length) meta.append(el('span', null, `${f.cmts.length} 评论`));
+    b.append(el('span', 'name', f.name), meta);
+    b.onclick = () => {
+      select(f.id);
+      panel('');
+    };
+    li.append(b);
+    ul.append(li);
+  }
+}
+
+function mountFrame(html, sandbox) {
+  const next = document.createElement('iframe');
+  next.id = 'frame';
+  next.title = '文档预览';
+  next.setAttribute('sandbox', sandbox);
+  next.srcdoc = html;
+  frame.replaceWith(next);
+  frame = next;
+}
+
+const page = (title, css, body) =>
+  `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base target="_blank"><title>${esc(title)}</title><style>${css}</style></head><body>${body}</body></html>`;
+
+async function build(f) {
+  const bytes = await blob(f.dataSha);
+  if (f.kind === 'html') return textOf(bytes);
+  if (f.kind === 'md') return page(f.name, MD_CSS, `<article class="md">${marked.parse(textOf(bytes), { gfm: true })}</article>`);
+  return page(f.name, IMG_CSS, `<img src="data:${f.mime};base64,${toB64(bytes)}" alt="${esc(f.name)}">`);
+}
+
+let mountSeq = 0;
+
+// 预览一律放进不带 allow-same-origin 的沙箱：文档里的脚本读不到本页存的令牌
+async function renderStage() {
+  const f = files.find((x) => x.id === cur);
+  $('#title').textContent = f ? f.name : '文档预览';
+  $('#cmtForm button').disabled = !f;
+  frame.hidden = !f;
+  $('#empty').hidden = !!f;
+  if (!f) {
+    shown = null;
+    return;
+  }
+  if (shown === f.dataSha) return;
+  shown = f.dataSha;
+  const sandbox = f.kind === 'html' ? 'allow-scripts allow-popups allow-popups-to-escape-sandbox' : 'allow-popups allow-popups-to-escape-sandbox';
+  const seq = ++mountSeq;
+  try {
+    const html = await build(f);
+    if (seq === mountSeq) mountFrame(html, sandbox);
+  } catch {
+    if (seq !== mountSeq) return;
+    shown = null;
+    $('#note').textContent = '预览加载失败，点刷新重试';
+  }
+}
+
+function renderComments(list, jump) {
+  const ul = $('#cmtList');
+  const stick = jump || ul.scrollTop + ul.clientHeight >= ul.scrollHeight - 40;
+  ul.replaceChildren(
+    ...list.map((c) => {
+      const li = el('li', `cmt ${c.role === 'ai' ? 'ai' : 'user'}`);
+      const who = el('div', 'who');
+      who.append(el('b', null, ROLE[c.role] || '我'), el('span', null, fmt(c.ts)));
+      li.append(who, el('p', null, c.text));
+      return li;
+    })
+  );
+  $('#cCount').textContent = list.length ? ` ${list.length}` : '';
+  if (stick) ul.scrollTop = ul.scrollHeight;
+}
+
+async function loadComments() {
+  const f = files.find((x) => x.id === cur);
+  if (!f) {
+    cmtFor = null;
+    cmtKey = '';
+    renderComments([], true);
+    return;
+  }
+  const key = f.cmts.map((c) => c.sha).join();
+  if (cmtFor === f.id && cmtKey === key) return;
+  const list = await Promise.all(
+    f.cmts.map(async (c) => {
+      try {
+        return JSON.parse(textOf(await blob(c.sha)));
+      } catch {
+        return null;
+      }
+    })
+  );
+  if (f.id !== cur) return;
+  renderComments(list.filter(Boolean), cmtFor !== f.id);
+  cmtFor = f.id;
+  cmtKey = key;
+}
+
+function select(id) {
+  cur = id;
+  history.replaceState(null, '', '#' + id);
+  renderList();
+  renderStage();
+  loadComments();
+}
+
+async function sync(force = false) {
+  if (!TOKEN) return;
+  if (busy) {
+    again = true;
+    return;
+  }
+  busy = true;
+  try {
+    const changed = await load(force);
+    if (!changed) return;
+    if (!files.some((f) => f.id === cur)) {
+      const hash = location.hash.slice(1);
+      cur = (files.find((f) => f.id === hash) || files[0] || {}).id || null;
+    }
+    showEmpty(files.length ? '' : '还没有文件', !files.length);
+    renderList();
+    renderStage();
+    loadComments();
+  } catch (e) {
+    if (e.status === 401 || e.status === 404) {
+      try {
+        localStorage.removeItem('rv-token');
+      } catch {}
+      askToken(e.status === 401 ? '令牌已失效，请重新填写' : '令牌没有 Remote 仓库的访问权限');
+    } else $('#note').textContent = e.message;
+  } finally {
+    busy = false;
+    if (again) {
+      again = false;
+      sync(true);
+    }
+  }
+}
+
+function cleanName(raw) {
+  let n = String(raw || '')
+    .normalize('NFC')
+    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .split(/[\\/]/)
+    .pop()
+    .trim();
+  const dot = n.lastIndexOf('.');
+  const ext = dot > 0 ? n.slice(dot) : '';
+  if (n.length > 120) n = n.slice(0, 120 - ext.length) + ext;
+  return n;
+}
+const typeOf = (name) => TYPES[(name.split('.').pop() || '').toLowerCase()];
+
+async function upload(list) {
+  const note = $('#note');
+  note.textContent = '';
+  const errors = [];
+  const entries = [];
+  const done = [];
+  let last = null;
+  try {
+    await load(true);
+  } catch (e) {
+    note.textContent = e.message;
+    return;
+  }
+  for (const file of list) {
+    const name = cleanName(file.name);
+    const type = name.includes('.') && typeOf(name);
+    if (!type) errors.push(`${name}：仅支持 md、html 和图片`);
+    else if (!file.size) errors.push(`${name}：文件为空`);
+    else if (file.size > MAX_FILE) errors.push(`${name}：文件超过 20MB`);
+    else if (done.includes(name)) continue;
+    else {
+      const old = files.find((x) => x.name === name);
+      const id = old?.id || rand(5);
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      entries.push({ path: `docs/${id}/data`, b64: toB64(bytes) });
+      entries.push({ path: `docs/${id}/meta.json`, b64: jsonB64({ name, kind: type[0], mime: type[1], rev: (old?.rev || 0) + 1, updated: Date.now() }) });
+      done.push(name);
+      last = id;
+    }
+  }
+  const btn = $('#btnUpload');
+  if (entries.length) {
+    btn.disabled = true;
+    btn.textContent = '上传中';
+    try {
+      await commit(entries, `上传 ${done.join('、')}`);
+      cur = last;
+      history.replaceState(null, '', '#' + last);
+      panel('');
+    } catch (e) {
+      errors.push(`上传失败：${e.message}`);
+    }
+    btn.disabled = false;
+    btn.textContent = '上传文件';
+  }
+  note.textContent = errors.join('\n');
+  await sync(true);
+}
+
+$('#btnFiles').onclick = () => togglePanel('files');
+$('#btnComments').onclick = () => togglePanel('comments');
+$('#btnUpload').onclick = () => $('#picker').click();
+$('#btnPick').onclick = () => $('#picker').click();
+$('#btnToken').onclick = () => askToken('');
+$('#picker').onchange = (e) => {
+  const list = [...e.target.files];
+  e.target.value = '';
+  if (list.length && TOKEN) upload(list);
+};
+$('#btnRefresh').onclick = async (e) => {
+  const btn = e.currentTarget;
+  btn.disabled = true;
+  shown = null;
+  cmtFor = null;
+  await sync(true);
+  btn.disabled = false;
+};
+
+$('#tokenForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const value = $('#tokenInput').value.trim();
+  if (!value) return;
+  const btn = e.currentTarget.querySelector('button');
+  btn.disabled = true;
+  $('#tokenNote').textContent = '';
+  TOKEN = value;
+  try {
+    await gh(`/git/ref/heads/${BRANCH}`);
+    try {
+      localStorage.setItem('rv-token', value);
+    } catch {}
+    $('#tokenInput').value = '';
+    $('#tokenForm').hidden = true;
+    await sync(true);
+  } catch (err) {
+    TOKEN = '';
+    $('#tokenNote').textContent = err.status === 401 ? '令牌无效' : err.status === 404 ? '令牌没有 Remote 仓库的访问权限' : err.message;
+  }
+  btn.disabled = false;
+};
+
+$('#cmtForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const ta = $('#cmtText');
+  const text = ta.value.trim();
+  if (!text || !cur) return;
+  if (text.length > MAX_COMMENT) {
+    $('#note').textContent = `评论不能超过 ${MAX_COMMENT} 字`;
+    return;
+  }
+  const btn = e.currentTarget.querySelector('button');
+  btn.disabled = true;
+  btn.textContent = '发送中';
+  try {
+    const ts = Date.now();
+    await commit([{ path: `comments/${cur}/${ts}-${rand(2)}.json`, b64: jsonB64({ role: 'user', text, ts }) }], '评论');
+    ta.value = '';
+    await sync(true);
+  } catch (err) {
+    $('#note').textContent = `发送失败：${err.message}`;
+    panel('files');
+  }
+  btn.textContent = '发送';
+  btn.disabled = !cur;
+};
+$('#cmtText').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) $('#cmtForm').requestSubmit();
+});
+
+let dragDepth = 0;
+const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes('Files');
+addEventListener('dragenter', (e) => {
+  if (!hasFiles(e) || !TOKEN) return;
+  dragDepth += 1;
+  app.classList.add('drag');
+});
+addEventListener('dragleave', () => {
+  dragDepth = Math.max(0, dragDepth - 1);
+  if (!dragDepth) app.classList.remove('drag');
+});
+addEventListener('dragover', (e) => {
+  if (hasFiles(e)) e.preventDefault();
+});
+addEventListener('drop', (e) => {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  dragDepth = 0;
+  app.classList.remove('drag');
+  if (TOKEN) upload([...e.dataTransfer.files]);
+});
+
+setInterval(() => {
+  if (!document.hidden) sync();
+}, 15000);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) sync();
+});
+addEventListener('hashchange', () => {
+  const id = location.hash.slice(1);
+  if (id !== cur && files.some((f) => f.id === id)) select(id);
+});
+
+if (TOKEN) sync(true);
+else askToken('');
+</script>
+</body>
+</html>
