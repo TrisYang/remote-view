@@ -2,187 +2,284 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
-<title>文档预览</title>
+<title>远程</title>
 <style>
-:root{--bg:#f6f7f9;--panel:#fff;--ink:#111827;--mute:#6b7280;--line:#e5e7eb;--accent:#2563eb;--tint:#eff6ff;--danger:#b91c1c}
+:root{--bg:#f6f7f9;--panel:#fff;--ink:#111827;--mute:#6b7280;--line:#e5e7eb;--edge:#d1d5db;--accent:#2563eb;--tint:#eff6ff;--warn-bg:#fffbeb;--warn:#b45309;--ok-bg:#f0fdf4;--ok:#15803d;--danger:#b91c1c}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue",sans-serif;-webkit-text-size-adjust:100%}
 button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 
-.app{display:grid;grid-template-rows:48px minmax(0,1fr);grid-template-columns:minmax(0,1fr);height:100vh;height:100dvh}
-.bar{display:flex;align-items:center;gap:4px;min-width:0;padding:0 8px;background:var(--panel);border-bottom:.5px solid var(--line)}
-.title{flex:1;min-width:0;margin:0;padding:0 8px;font-size:16px;font-weight:600;line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shell{display:flex;flex-direction:column;height:100vh;height:100dvh}
+.banner{flex:none;margin:0;padding:8px 16px;border-bottom:.5px solid #fde68a;background:var(--warn-bg);color:var(--warn);font-size:12px}
+.app{display:flex;flex:1;min-height:0;background:var(--panel)}
+.side,.main{display:flex;flex-direction:column;flex:1;min-width:0;min-height:0}
+.app[data-depth="list"] .main,.app[data-depth="detail"] .side{display:none}
 
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:4px;height:40px;padding:0 12px;border:.5px solid var(--line);border-radius:6px;background:var(--panel);cursor:pointer;white-space:nowrap}
-.btn.ghost{border-color:transparent;background:transparent}
-.btn.primary{border-color:var(--accent);background:var(--accent);color:#fff}
-.btn:disabled{opacity:.5;cursor:default}
-@media (hover:hover){.btn.ghost:hover{background:var(--bg)}.item:hover{background:var(--bg)}}
+.top{display:flex;align-items:center;gap:4px;flex:none;min-height:52px;padding:0 8px;border-bottom:.5px solid var(--line)}
+.top h1{flex:1;min-width:0;margin:0;padding:0 8px;font-size:16px;font-weight:600;line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.icon{display:inline-flex;align-items:center;justify-content:center;min-width:40px;height:40px;padding:0 10px;border:0;border-radius:6px;background:transparent;color:var(--accent)}
+.icon:disabled{opacity:.5}
+@media (hover:hover){.icon:hover,.row:hover{background:var(--bg)}}
 
-.side{display:none;flex-direction:column;min-height:0;background:var(--panel)}
-.files,.cmts{position:fixed;inset:48px 0 0 0;z-index:2}
-.app[data-panel="files"] .files,.app[data-panel="comments"] .cmts{display:flex}
-.side-head{display:flex;flex-direction:column;gap:8px;padding:12px;border-bottom:.5px solid var(--line)}
-.note{margin:0;font-size:12px;color:var(--danger);overflow-wrap:anywhere;white-space:pre-line}
+.side-top{order:0}
+.tabs{display:grid;grid-template-columns:1fr 1fr;flex:none;order:3;border-top:.5px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+.tabs button{height:48px;border:0;background:transparent;color:var(--mute)}
+.tabs button[aria-current="page"]{color:var(--accent);font-weight:600}
+.side-body{order:2;flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
+.side-foot{padding:12px 16px 16px}
+.side-foot button{height:32px;padding:0;border:0;background:transparent;font-size:12px;color:var(--mute)}
+
+.list{margin:0;padding:0;list-style:none}
+.row{display:block;width:100%;padding:10px 16px;border:0;border-bottom:.5px solid var(--line);background:transparent;text-align:left}
+.row[aria-current="true"]{background:var(--tint)}
+.line{display:flex;align-items:center;gap:8px;min-width:0}
+.name{flex:1;min-width:0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta{display:flex;flex-wrap:wrap;gap:0 8px;font-size:12px;color:var(--mute)}
+.tag{display:inline-block;max-width:100%;margin:4px 4px 0 0;padding:0 8px;font-size:12px;line-height:20px;border-radius:4px;background:var(--bg);color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:top}
+.loading{margin:0;padding:48px 16px;text-align:center;color:var(--mute);list-style:none}
+
+.tools{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:.5px solid var(--line)}
+.upload{flex:none;height:36px;padding:0 12px;border:.5px solid var(--accent);border-radius:6px;background:var(--accent);color:#fff}
+.upload:disabled{opacity:.5}
+.hint{margin:0;min-width:0;font-size:12px;color:var(--mute)}
+.chips{display:flex;gap:6px;padding:10px 16px;overflow-x:auto;border-bottom:.5px solid var(--line);scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;height:28px;padding:0 10px;border:.5px solid var(--edge);border-radius:14px;background:var(--panel);font-size:12px;color:var(--mute);white-space:nowrap}
+.chip[aria-pressed="true"]{border-color:var(--accent);background:var(--tint);color:var(--accent)}
+
+.pill{display:inline-flex;align-items:center;gap:4px;flex:none;padding:0 8px;font-size:12px;line-height:20px;border-radius:10px;white-space:nowrap}
+.pill::before{content:"";width:6px;height:6px;border-radius:3px;background:currentColor}
+.s-queued,.s-sent{background:#f3f4f6;color:var(--mute)}
+.s-recv,.s-busy{background:var(--tint);color:var(--accent)}
+.s-done{background:var(--ok-bg);color:var(--ok)}
+.s-mac{background:var(--warn-bg);color:var(--warn)}
+
+.main-body{position:relative;flex:1;min-height:0}
+.view{position:absolute;inset:0;display:flex;flex-direction:column;min-height:0}
+#v-none{align-items:center;justify-content:center;color:var(--mute)}
+
+.scroller{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
+.thread{max-width:800px;margin:0 auto;padding:0 16px 24px}
+.older{display:flex;justify-content:center;padding:16px 0 0}
+.older button{height:32px;padding:0 14px;border:.5px solid var(--edge);border-radius:16px;background:var(--panel);font-size:12px;color:var(--mute)}
+.older button:disabled{color:var(--accent);border-color:var(--accent);cursor:default}
+.older p{margin:0;font-size:12px;color:var(--mute)}
+.round{padding:16px 0;border-bottom:.5px solid var(--line)}
+.round:last-child{border-bottom:0}
+.who{display:flex;align-items:center;gap:8px;margin:0 0 4px;font-size:12px;color:var(--mute)}
+.who b{font-weight:600;color:var(--ink)}
+.who b.ai{color:var(--accent)}
+.who .pill{margin-left:auto}
+.ask{margin:0 0 12px;padding:10px 12px;border-radius:8px;background:var(--bg);white-space:pre-wrap;overflow-wrap:anywhere}
+.reply{line-height:1.75;overflow-wrap:anywhere}
+.reply.clamp{max-height:280px;overflow:hidden;-webkit-mask-image:linear-gradient(#000 70%,transparent);mask-image:linear-gradient(#000 70%,transparent)}
+.toggle{margin:8px 0 0;padding:0;border:0;background:transparent;font-size:12px;color:var(--accent)}
+.wait{margin:0;color:var(--mute)}
+
+.md>:first-child{margin-top:0}
+.md>:last-child{margin-bottom:0}
+.md p,.md ul,.md ol,.md pre,.md table,.md blockquote{margin:0 0 12px}
+.md h1,.md h2{margin:20px 0 8px;font-size:16px;line-height:1.5}
+.md h3,.md h4,.md h5,.md h6{margin:16px 0 6px;font-size:14px;line-height:1.5}
+.md ul,.md ol{padding-left:1.4em}
+.md li+li{margin-top:2px}
+.md a{color:var(--accent)}
+.md code{font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;background:#f3f4f6;padding:1px 4px;border-radius:4px}
+.md pre{padding:10px 12px;border:.5px solid var(--line);border-radius:6px;background:var(--bg);overflow-x:auto}
+.md pre code{padding:0;background:none}
+.md blockquote{padding:8px 12px;background:var(--bg);color:#4b5563}
+.md table{display:block;max-width:100%;overflow-x:auto;border-collapse:collapse}
+.md th,.md td{padding:6px 10px;border:.5px solid var(--edge);text-align:left;vertical-align:top}
+.md th{background:var(--bg);font-weight:600}
+.md hr{margin:16px 0;border:0;border-top:.5px solid var(--line)}
+
+.compose{flex:none;padding:8px 12px calc(8px + env(safe-area-inset-bottom));border-top:.5px solid var(--line);background:var(--panel)}
+.compose-in{display:flex;align-items:flex-end;gap:8px;max-width:800px;margin:0 auto}
+textarea{flex:1;min-width:0;max-height:160px;padding:8px 10px;border:.5px solid var(--edge);border-radius:6px;background:var(--panel);font-size:16px;line-height:1.5;resize:none}
+.send{flex:none;height:40px;padding:0 14px;border:0;border-radius:6px;background:var(--accent);color:#fff}
+.send:disabled{opacity:.5}
+
+#v-file{overflow:auto;-webkit-overflow-scrolling:touch}
+.file-main,.file-side{display:contents}
+.fhead{flex:none;padding:10px 16px;border-bottom:.5px solid var(--line)}
+.fhead .tag{margin-top:0}
+.fpath{overflow-wrap:anywhere}
+.frame{display:block;flex:none;width:100%;height:60vh;height:60dvh;border:0;border-bottom:.5px solid var(--line);background:#fff}
+.cmts{flex:1 0 auto;margin:0;padding:0 16px;list-style:none}
+.cmt{padding:10px 0;border-bottom:.5px solid var(--line)}
+.cmt:last-child{border-bottom:0}
+.cmt p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.cmts .loading{padding:24px 0}
+#v-file .compose{position:sticky;bottom:0}
+
+.note{position:fixed;top:60px;left:50%;z-index:8;max-width:calc(100% - 32px);margin:0;padding:8px 12px;border:.5px solid #fecaca;border-radius:6px;background:#fef2f2;color:var(--danger);font-size:12px;white-space:pre-line;transform:translateX(-50%)}
 .note:empty{display:none}
 
-.list{flex:1;margin:0;padding:4px 0;list-style:none;overflow:auto}
-.item{display:block;width:100%;padding:10px 12px;border:0;background:transparent;text-align:left;cursor:pointer}
-.item[aria-current="true"]{background:var(--tint)}
-.item .name{display:block;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.item .meta{display:flex;gap:8px;font-size:12px;color:var(--mute)}
-.side-foot{padding:4px 12px 12px}
-.side-foot .btn{width:100%;color:var(--mute)}
-
-.stage{position:relative;min-height:0;background:var(--panel)}
-#frame{position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff}
-.empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;color:var(--mute)}
-.empty p{margin:0}
-#drop{position:absolute;inset:8px;z-index:1;display:none;align-items:center;justify-content:center;border:.5px dashed var(--accent);border-radius:6px;background:rgba(246,247,249,.92);color:var(--accent);font-weight:600}
+.gate{position:fixed;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--panel)}
+.gate form{display:flex;flex-direction:column;gap:8px;width:100%;max-width:360px}
+.gate label{font-weight:600}
+.gate input{height:40px;padding:0 10px;border:.5px solid var(--edge);border-radius:6px;font-size:16px}
+.gate .send{width:100%}
+.gate p{margin:0;font-size:12px;color:var(--danger)}
+.gate p:empty{display:none}
+#drop{position:fixed;inset:8px;z-index:7;display:none;align-items:center;justify-content:center;border:.5px dashed var(--accent);border-radius:8px;background:rgba(246,247,249,.92);color:var(--accent);font-weight:600}
 .app.drag #drop{display:flex}
 
-.token{display:flex;flex-direction:column;gap:8px;width:100%;max-width:360px;color:var(--ink)}
-.token label{font-weight:600}
-.token input{height:40px;padding:0 10px;border:.5px solid var(--line);border-radius:6px;background:var(--panel);font-size:16px}
-
-.cmt-list{flex:1;display:flex;flex-direction:column;gap:12px;margin:0;padding:12px;list-style:none;overflow:auto}
-.who{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--mute)}
-.who b{font-weight:600;color:var(--ink)}
-.cmt.ai .who b{color:var(--accent)}
-.cmt p{margin:2px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
-.cmt-form{display:flex;flex-direction:column;gap:8px;padding:12px;border-top:.5px solid var(--line)}
-.cmt-form .btn{align-self:flex-end}
-textarea{display:block;width:100%;padding:8px 10px;border:.5px solid var(--line);border-radius:6px;background:var(--panel);font-size:16px;line-height:1.5;resize:none}
-
 @media (min-width:900px){
-  .app{grid-template-columns:260px minmax(0,1fr) 320px}
-  .bar{grid-column:1/-1}
-  .side{display:flex;position:static;z-index:auto}
-  .files{border-right:.5px solid var(--line)}
-  .cmts{border-left:.5px solid var(--line)}
-  #btnFiles,#btnComments{display:none}
+  .app[data-depth] .side,.app[data-depth] .main{display:flex}
+  .side{flex:none;width:320px;border-right:.5px solid var(--line);background:var(--panel)}
+  .side-top .icon{display:none}
+  .tabs{order:1;gap:4px;padding:8px 12px;border-top:0;border-bottom:.5px solid var(--line)}
+  .tabs button{height:32px;border-radius:6px}
+  .tabs button[aria-current="page"]{background:var(--tint)}
+  .thread{padding:0 32px 32px}
+  #v-file{flex-direction:row;overflow:hidden}
+  .file-main{display:flex;flex-direction:column;flex:1;min-width:0}
+  .frame{flex:1;height:auto;border-bottom:0}
+  .file-side{display:flex;flex-direction:column;flex:none;width:360px;border-left:.5px solid var(--line)}
+  .file-side .cmts{flex:1;min-height:0;overflow:auto}
+  #v-file .compose{position:static}
 }
 </style>
 </head>
 <body>
-<div class="app" id="app" data-panel="">
-  <header class="bar">
-    <button class="btn ghost" id="btnFiles" type="button" aria-expanded="false">文件</button>
-    <h1 class="title" id="title">文档预览</h1>
-    <button class="btn ghost" id="btnRefresh" type="button">刷新</button>
-    <button class="btn ghost" id="btnComments" type="button" aria-expanded="false">评论<span id="cCount"></span></button>
-  </header>
-
-  <aside class="side files" id="files" aria-label="文件">
-    <div class="side-head">
-      <button class="btn primary" id="btnUpload" type="button">上传文件</button>
-      <p class="note" id="note" role="status"></p>
-    </div>
-    <ul class="list" id="fileList"></ul>
-    <div class="side-foot">
-      <button class="btn ghost" id="btnToken" type="button">更换令牌</button>
+<div class="shell">
+<p class="banner" id="banner" role="status" hidden></p>
+<div class="app" id="app" data-depth="list">
+  <aside class="side" aria-label="列表">
+    <header class="top side-top">
+      <h1 id="sideTitle">最近对话</h1>
+      <button class="icon" type="button" data-refresh>刷新</button>
+    </header>
+    <nav class="tabs" id="tabs">
+      <button type="button" data-tab="convs">对话</button>
+      <button type="button" data-tab="files">文件</button>
+    </nav>
+    <div class="side-body">
+      <section id="v-convs"><ul class="list" id="convList"><li class="loading">正在加载…</li></ul></section>
+      <section id="v-files" hidden>
+        <div class="tools"><button class="upload" id="upload" type="button">上传文件</button><p class="hint" id="upHint" role="status"></p></div>
+        <div class="chips" id="chips" role="group" aria-label="按对话筛选"></div>
+        <ul class="list" id="fileList"><li class="loading">正在加载…</li></ul>
+      </section>
+      <div class="side-foot"><button type="button" id="btnToken">更换令牌</button></div>
     </div>
   </aside>
 
-  <main class="stage" id="stage">
-    <iframe id="frame" title="文档预览" hidden></iframe>
-    <div class="empty" id="empty">
-      <p id="emptyMsg" role="status"></p>
-      <button class="btn primary" id="btnPick" type="button" hidden>选择文件</button>
-      <form class="token" id="tokenForm" hidden>
-        <label for="tokenInput">访问令牌</label>
-        <input id="tokenInput" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_">
-        <button class="btn primary" type="submit">保存</button>
-        <p class="note" id="tokenNote" role="status"></p>
-      </form>
+  <main class="main">
+    <header class="top">
+      <button class="icon" id="back" type="button" aria-label="返回" hidden>‹</button>
+      <h1 id="mainTitle"></h1>
+      <button class="icon" type="button" data-refresh>刷新</button>
+    </header>
+    <div class="main-body">
+      <section class="view" id="v-none"><p id="noneMsg">正在加载…</p></section>
+
+      <section class="view" id="v-conv" hidden>
+        <div class="scroller" id="convScroll">
+          <div class="thread">
+            <div class="older" id="olderBox" hidden><button id="older" type="button">加载更早的 5 轮</button></div>
+            <div class="older" id="cappedBox" hidden><p>更早的内容请在 Mac 上查看</p></div>
+            <div id="rounds" role="log" aria-live="polite"></div>
+          </div>
+        </div>
+        <form class="compose" id="convForm">
+          <div class="compose-in">
+            <textarea rows="1" maxlength="8000" placeholder="继续对话" aria-label="消息内容"></textarea>
+            <button class="send" type="submit">发送</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="view" id="v-file" hidden>
+        <div class="file-main">
+          <div class="fhead" id="fhead"></div>
+          <iframe class="frame" id="frame" title="文件预览"></iframe>
+        </div>
+        <div class="file-side">
+          <ul class="cmts" id="cmts" role="log" aria-live="polite"></ul>
+          <form class="compose" id="fileForm">
+            <div class="compose-in">
+              <textarea rows="1" maxlength="2000" placeholder="评论这份文件" aria-label="评论内容"></textarea>
+              <button class="send" type="submit">发送</button>
+            </div>
+          </form>
+        </div>
+      </section>
     </div>
-    <div id="drop">松开上传</div>
   </main>
-
-  <aside class="side cmts" id="comments" aria-label="评论">
-    <ul class="cmt-list" id="cmtList" role="log" aria-live="polite"></ul>
-    <form class="cmt-form" id="cmtForm">
-      <textarea id="cmtText" rows="3" maxlength="2000" placeholder="写评论" aria-label="评论内容"></textarea>
-      <button class="btn primary" type="submit">发送</button>
-    </form>
-  </aside>
+  <div id="drop">松开上传</div>
 </div>
+</div>
+
+<p class="note" id="note" role="status"></p>
+
+<div class="gate" id="gate" hidden>
+  <form id="gateForm">
+    <label for="key">访问令牌</label>
+    <input id="key" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_">
+    <button class="send" type="submit">保存</button>
+    <p id="gateNote" role="status"></p>
+  </form>
+</div>
+
 <input type="file" id="picker" multiple hidden accept=".md,.markdown,.html,.htm,.png,.jpg,.jpeg,.gif,.webp,.avif,.svg">
 
-<script src="marked.umd.js"></script>
 <script>
-// 文档和评论存在私有仓库 TrisYang/Remote 的 store 分支，页面用访问令牌直接调 GitHub API 读写。
+// 内容来自私有仓库 TrisYang/Remote：live 分支是 Mac 同步上来的对话和文件，消息、评论和上传写进 inbox 分支，由 Mac 接收处理。
 const REPO_API = 'https://api.github.com/repos/TrisYang/Remote';
-const BRANCH = 'store';
+const POLL_MS = 10000;
+const OFFLINE_MS = 5 * 60e3;
 const MAX_FILE = 20 * 1024 * 1024;
-const MAX_COMMENT = 2000;
-
-const TYPES = {
-  md: ['md', 'text/markdown'],
-  markdown: ['md', 'text/markdown'],
-  html: ['html', 'text/html'],
-  htm: ['html', 'text/html'],
-  png: ['img', 'image/png'],
-  jpg: ['img', 'image/jpeg'],
-  jpeg: ['img', 'image/jpeg'],
-  gif: ['img', 'image/gif'],
-  webp: ['img', 'image/webp'],
-  avif: ['img', 'image/avif'],
-  svg: ['img', 'image/svg+xml'],
-};
-const KIND = { md: 'MD', html: 'HTML', img: '图片' };
-const ROLE = { user: '我', ai: 'Claude' };
-
-const MD_CSS = `
-:root{color-scheme:light}
-*{box-sizing:border-box}
-body{margin:0;background:#fff;color:#111827;font:16px/1.75 -apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue",sans-serif;-webkit-text-size-adjust:100%}
-.md{max-width:760px;margin:0 auto;padding:24px 16px 64px;overflow-wrap:anywhere}
-.md h1{font-size:24px;line-height:1.35;margin:0 0 16px}
-.md h2{font-size:18px;line-height:1.4;margin:32px 0 12px}
-.md h3,.md h4,.md h5,.md h6{font-size:16px;margin:24px 0 8px}
-.md p,.md ul,.md ol,.md pre,.md table,.md blockquote{margin:0 0 16px}
-.md ul,.md ol{padding-left:1.5em}
-.md a{color:#2563eb}
-.md code{font:14px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;background:#f3f4f6;padding:1px 4px;border-radius:4px}
-.md pre{background:#f6f7f9;border:.5px solid #e5e7eb;border-radius:6px;padding:12px;overflow-x:auto}
-.md pre code{background:none;padding:0}
-.md blockquote{background:#f6f7f9;padding:8px 12px;color:#4b5563}
-.md blockquote>:last-child{margin-bottom:0}
-.md table{display:block;overflow-x:auto;border-collapse:collapse;font-size:14px}
-.md th,.md td{border:.5px solid #d1d5db;padding:6px 10px;text-align:left}
-.md th{background:#f6f7f9}
-.md img{max-width:100%;height:auto}
-.md hr{border:0;border-top:.5px solid #e5e7eb;margin:24px 0}
-`;
-const IMG_CSS = `
-*{box-sizing:border-box}
-body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f6f7f9}
-img{display:block;max-width:100%;max-height:100vh;object-fit:contain}
-`;
+const STEP = 5;
+const EXTS = new Set(['md', 'markdown', 'html', 'htm', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'avif', 'svg']);
 
 const $ = (s) => document.querySelector(s);
 const app = $('#app');
-let frame = $('#frame');
+const wide = matchMedia('(min-width: 900px)');
+const STATUS = { queued: '已发送', sent: '已发送', recv: '已接收', busy: '处理中', done: '已回复', mac: '需回 Mac 处理' };
+const WAIT = { queued: '等待 Mac 接收', sent: '等待转给对话', recv: '已转给对话，等待开始', busy: 'Claude 正在处理', mac: '需要回到 Mac 上处理' };
+const FROM = { user: '我', phone: '我（手机）', peer: '其他对话' };
+const KIND = { md: 'MD', html: 'HTML', img: '图片' };
+const OLDER = '加载更早的 5 轮';
+const msgDoc = (t) => `<!doctype html><meta charset="utf-8"><body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;font:14px -apple-system,'PingFang SC',sans-serif;color:#6b7280">${t}</body>`;
 
 let TOKEN = '';
 try {
   TOKEN = localStorage.getItem('rv-token') || '';
 } catch {}
 
-let head = null;
+let route = { name: '', id: '' };
+let filter = '';
+let head = '';
+let refTag = '';
+let paths = new Map();
+let syncedAt = 0;
+let acks = new Map();
+let pending = [];
+let upBatch = null;
+let convs = [];
+let convSig = '';
 let files = [];
-let cur = null;
-let shown = null;
-let cmtFor = null;
-let cmtKey = '';
+let chips = [];
+let filesSig = '';
+let conv = null;
+let shownFile = '';
+let fileCmts = { id: '', list: [] };
+let lastConv = '';
+let lastFile = '';
 let busy = false;
 let again = false;
+let againForce = false;
+let noteSticky = false;
+const expanded = new Set();
+const blobs = new Map();
 
 const el = (tag, cls, text) => {
   const n = document.createElement(tag);
@@ -191,12 +288,24 @@ const el = (tag, cls, text) => {
   return n;
 };
 const pad = (n) => String(n).padStart(2, '0');
-const fmt = (ts) => {
+function when(ts) {
   const d = new Date(ts);
-  return `${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-};
-const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const now = new Date();
+  const hm = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const day = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((day(now) - day(d)) / 864e5);
+  if (diff === 0) return hm;
+  if (diff === 1) return `昨天 ${hm}`;
+  return `${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${hm}`;
+}
+const pill = (s) => (s && STATUS[s] ? el('span', `pill s-${s}`, STATUS[s]) : null);
+function note(t, sticky = false) {
+  $('#note').textContent = t || '';
+  noteSticky = !!t && sticky;
+}
+const errText = (e) => (e instanceof TypeError ? '网络连接失败，稍后再试' : e.message);
 const rand = (n) => [...crypto.getRandomValues(new Uint8Array(n))].map((b) => b.toString(16).padStart(2, '0')).join('');
+const newId = () => `${Date.now()}-${rand(3)}`;
 
 const fromB64 = (b64) => Uint8Array.from(atob(b64.replace(/\s/g, '')), (c) => c.charCodeAt(0));
 function toB64(bytes) {
@@ -205,60 +314,101 @@ function toB64(bytes) {
   return btoa(s);
 }
 const utf8 = new TextDecoder();
-const textOf = (bytes) => utf8.decode(bytes).replace(/^\ufeff/, '');
+const textOf = (bytes) => utf8.decode(bytes);
 const jsonB64 = (obj) => toB64(new TextEncoder().encode(JSON.stringify(obj) + '\n'));
 
+const auth = () => ({ Accept: 'application/vnd.github+json', Authorization: `Bearer ${TOKEN}`, 'X-GitHub-Api-Version': '2022-11-28' });
+async function ghError(r) {
+  const j = await r.json().catch(() => ({}));
+  const msg = r.status === 403 && /rate limit/i.test(j.message || '') ? '请求太频繁，稍后再试' : j.message || '请求失败';
+  return Object.assign(new Error(msg), { status: r.status });
+}
 async function gh(path, opts = {}) {
-  const headers = { Accept: 'application/vnd.github+json', Authorization: `Bearer ${TOKEN}`, 'X-GitHub-Api-Version': '2022-11-28' };
+  const headers = auth();
   if (opts.body) headers['Content-Type'] = 'application/json';
   const r = await fetch(REPO_API + path, { cache: 'no-store', ...opts, headers });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) {
-    const e = new Error(r.status === 403 && /rate limit/i.test(j.message || '') ? '请求太频繁，稍后再试' : j.message || '请求失败');
-    e.status = r.status;
-    throw e;
-  }
-  return j;
+  if (!r.ok) throw await ghError(r);
+  return r.json();
 }
 
-// blob 按 sha 寻址，内容不可变，取过一次就缓存
-const blobs = new Map();
-async function blob(sha) {
-  if (!blobs.has(sha)) blobs.set(sha, gh(`/git/blobs/${sha}`).then((j) => fromB64(j.content)).catch((e) => (blobs.delete(sha), Promise.reject(e))));
+function blob(sha) {
+  if (!blobs.has(sha))
+    blobs.set(
+      sha,
+      gh(`/git/blobs/${sha}`)
+        .then((j) => fromB64(j.content))
+        .catch((e) => {
+          blobs.delete(sha);
+          throw e;
+        })
+    );
   return blobs.get(sha);
 }
-
-async function load(force) {
-  const sha = (await gh(`/git/ref/heads/${BRANCH}`)).object.sha;
-  if (!force && sha === head) return false;
-  const tree = await gh(`/git/trees/${sha}?recursive=1`);
-  const docs = {};
-  const cmts = {};
-  for (const e of tree.tree) {
-    if (e.type !== 'blob') continue;
-    let m;
-    if ((m = e.path.match(/^docs\/([0-9a-f]{10})\/(data|meta\.json)$/))) (docs[m[1]] ||= { id: m[1] })[m[2] === 'data' ? 'dataSha' : 'metaSha'] = e.sha;
-    else if ((m = e.path.match(/^comments\/([0-9a-f]{10})\/[^/]+\.json$/))) (cmts[m[1]] ||= []).push({ path: e.path, sha: e.sha });
+const readText = async (p) => {
+  const sha = paths.get(p);
+  return sha ? textOf(await blob(sha)) : null;
+};
+async function readJson(p) {
+  const t = await readText(p);
+  if (t == null) return null;
+  try {
+    return JSON.parse(t);
+  } catch {
+    return null;
   }
-  const list = await Promise.all(
-    Object.values(docs)
-      .filter((d) => d.dataSha && d.metaSha)
-      .map(async (d) => {
-        try {
-          const meta = JSON.parse(textOf(await blob(d.metaSha)));
-          return { ...meta, ...d, cmts: (cmts[d.id] || []).sort((a, b) => (a.path < b.path ? -1 : 1)) };
-        } catch {
-          return null;
-        }
-      })
-  );
-  files = list.filter(Boolean).sort((a, b) => b.updated - a.updated);
+}
+
+// 分支没变时 GitHub 回 304，不占请求额度
+async function pull(force) {
+  const headers = auth();
+  if (refTag && !force) headers['If-None-Match'] = refTag;
+  const r = await fetch(`${REPO_API}/git/ref/heads/live`, { cache: 'no-store', headers });
+  if (r.status === 304) return false;
+  if (!r.ok) throw await ghError(r);
+  const j = await r.json();
+  refTag = r.headers.get('etag') || '';
+  const sha = j.object.sha;
+  if (sha === head) return false;
+  const tree = await gh(`/git/trees/${sha}?recursive=1`);
+  const next = new Map(tree.tree.filter((e) => e.type === 'blob').map((e) => [e.path, e.sha]));
+  const keep = new Set(next.values());
+  for (const k of blobs.keys()) if (!keep.has(k)) blobs.delete(k);
+  paths = next;
   head = sha;
+  const [m, a] = await Promise.all([readJson('meta.json'), readJson('acks.json')]);
+  syncedAt = m?.syncedAt || 0;
+  acks = new Map((a?.acks || []).map((x) => [x.id, x]));
+  settle();
   return true;
 }
 
-// 一次提交写入多个文件；分支被别处先推进时（网页和本机同时写）重取最新再提交
-async function commit(entries, message) {
+function settle() {
+  const errs = [];
+  pending = pending.filter((p) => {
+    const a = acks.get(p.id);
+    if (!a) return true;
+    if (!a.ok) errs.push(`${p.type === 'upload' ? p.name : p.type === 'comment' ? '评论' : '消息'}发送失败：${a.error}`);
+    else if (p.type === 'upload' && upBatch?.ids.has(p.id)) upBatch.last = a.ref;
+    return false;
+  });
+  if (errs.length) note(errs.join('\n'), true);
+  if (upBatch && !pending.some((p) => upBatch.ids.has(p.id))) {
+    const last = upBatch.last;
+    upBatch = null;
+    $('#upHint').textContent = '';
+    if (last && sideTab() === 'files') go(`f/${last}`);
+  }
+}
+
+function banner() {
+  const b = $('#banner');
+  const off = !!syncedAt && Date.now() - syncedAt > OFFLINE_MS;
+  b.hidden = !off;
+  if (off) b.textContent = `Mac 不在线，显示的是 ${when(syncedAt)} 的内容，新发的消息会在 Mac 上线后处理`;
+}
+
+// 一次提交写入多个文件；分支被 Mac 先改过时重取最新再提交
+async function commitInbox(entries, message) {
   const tree = await Promise.all(
     entries.map(async (e) => ({
       path: e.path,
@@ -268,12 +418,18 @@ async function commit(entries, message) {
     }))
   );
   for (let i = 0; ; i++) {
-    const base = (await gh(`/git/ref/heads/${BRANCH}`)).object.sha;
+    let base;
+    try {
+      base = (await gh('/git/ref/heads/inbox')).object.sha;
+    } catch (e) {
+      if (e.status === 404) throw Object.assign(new Error('Mac 还没开始同步，稍后再试'), { status: 0 });
+      throw e;
+    }
     const baseTree = (await gh(`/git/commits/${base}`)).tree.sha;
     const t = await gh('/git/trees', { method: 'POST', body: JSON.stringify({ base_tree: baseTree, tree }) });
     const c = await gh('/git/commits', { method: 'POST', body: JSON.stringify({ message, tree: t.sha, parents: [base] }) });
     try {
-      await gh(`/git/refs/heads/${BRANCH}`, { method: 'PATCH', body: JSON.stringify({ sha: c.sha }) });
+      await gh('/git/refs/heads/inbox', { method: 'PATCH', body: JSON.stringify({ sha: c.sha }) });
       return;
     } catch (e) {
       if (e.status !== 422 || i >= 4) throw e;
@@ -281,182 +437,472 @@ async function commit(entries, message) {
   }
 }
 
-function panel(name) {
-  app.dataset.panel = name;
-  $('#btnFiles').setAttribute('aria-expanded', String(name === 'files'));
-  $('#btnComments').setAttribute('aria-expanded', String(name === 'comments'));
-}
-const togglePanel = (name) => panel(app.dataset.panel === name ? '' : name);
-
-function showEmpty(msg, pick) {
-  $('#emptyMsg').textContent = msg || '';
-  $('#btnPick').hidden = !pick;
-}
-
-function askToken(msg) {
+function forgetToken() {
   TOKEN = '';
-  head = null;
-  files = [];
-  cur = null;
-  renderList();
-  renderStage();
-  renderComments([], true);
-  showEmpty('');
-  $('#tokenForm').hidden = false;
-  $('#tokenNote').textContent = msg || '';
-  panel('');
-}
-
-function renderList() {
-  const ul = $('#fileList');
-  ul.replaceChildren();
-  for (const f of files) {
-    const li = el('li');
-    const b = el('button', 'item');
-    b.type = 'button';
-    if (f.id === cur) b.setAttribute('aria-current', 'true');
-    const meta = el('span', 'meta');
-    meta.append(el('span', null, KIND[f.kind] || f.kind), el('span', null, fmt(f.updated)));
-    if (f.cmts.length) meta.append(el('span', null, `${f.cmts.length} 评论`));
-    b.append(el('span', 'name', f.name), meta);
-    b.onclick = () => {
-      select(f.id);
-      panel('');
-    };
-    li.append(b);
-    ul.append(li);
-  }
-}
-
-function mountFrame(html, sandbox) {
-  const next = document.createElement('iframe');
-  next.id = 'frame';
-  next.title = '文档预览';
-  next.setAttribute('sandbox', sandbox);
-  next.srcdoc = html;
-  frame.replaceWith(next);
-  frame = next;
-}
-
-const page = (title, css, body) =>
-  `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base target="_blank"><title>${esc(title)}</title><style>${css}</style></head><body>${body}</body></html>`;
-
-async function build(f) {
-  const bytes = await blob(f.dataSha);
-  if (f.kind === 'html') return textOf(bytes);
-  if (f.kind === 'md') return page(f.name, MD_CSS, `<article class="md">${marked.parse(textOf(bytes), { gfm: true })}</article>`);
-  return page(f.name, IMG_CSS, `<img src="data:${f.mime};base64,${toB64(bytes)}" alt="${esc(f.name)}">`);
-}
-
-let mountSeq = 0;
-
-// 预览一律放进不带 allow-same-origin 的沙箱：文档里的脚本读不到本页存的令牌
-async function renderStage() {
-  const f = files.find((x) => x.id === cur);
-  $('#title').textContent = f ? f.name : '文档预览';
-  $('#cmtForm button').disabled = !f;
-  frame.hidden = !f;
-  $('#empty').hidden = !!f;
-  if (!f) {
-    shown = null;
-    return;
-  }
-  if (shown === f.dataSha) return;
-  shown = f.dataSha;
-  const sandbox = f.kind === 'html' ? 'allow-scripts allow-popups allow-popups-to-escape-sandbox' : 'allow-popups allow-popups-to-escape-sandbox';
-  const seq = ++mountSeq;
   try {
-    const html = await build(f);
-    if (seq === mountSeq) mountFrame(html, sandbox);
-  } catch {
-    if (seq !== mountSeq) return;
-    shown = null;
-    $('#note').textContent = '预览加载失败，点刷新重试';
+    localStorage.removeItem('rv-token');
+  } catch {}
+}
+function askToken(msg) {
+  $('#gate').hidden = false;
+  $('#gateNote').textContent = msg || '';
+  note('');
+  $('#key').focus();
+}
+
+function parseHash() {
+  const h = location.hash.slice(1);
+  let m;
+  if ((m = h.match(/^c\/([0-9a-f-]{36})$/))) return { name: 'conv', id: m[1] };
+  if ((m = h.match(/^f\/([0-9a-fc]{10,13})$/))) return { name: 'file', id: m[1] };
+  if (h === 'files') return { name: 'files', id: '' };
+  return { name: 'convs', id: '' };
+}
+const go = (hash) => {
+  if (location.hash.slice(1) === hash) render(true);
+  else location.hash = hash;
+};
+const sideTab = () => (route.name === 'files' || route.name === 'file' ? 'files' : 'convs');
+const isDetail = () => route.name === 'conv' || route.name === 'file';
+
+function layout() {
+  const tab = sideTab();
+  app.dataset.depth = isDetail() ? 'detail' : 'list';
+  $('#v-convs').hidden = tab !== 'convs';
+  $('#v-files').hidden = tab !== 'files';
+  $('#v-conv').hidden = route.name !== 'conv';
+  $('#v-file').hidden = route.name !== 'file';
+  $('#v-none').hidden = isDetail();
+  $('#sideTitle').textContent = wide.matches ? '远程' : tab === 'convs' ? '最近对话' : '文件';
+  $('#back').hidden = wide.matches || !isDetail();
+  for (const b of document.querySelectorAll('.tabs button')) {
+    if (b.dataset.tab === tab) b.setAttribute('aria-current', 'page');
+    else b.removeAttribute('aria-current');
   }
 }
 
-function renderComments(list, jump) {
-  const ul = $('#cmtList');
-  const stick = jump || ul.scrollTop + ul.clientHeight >= ul.scrollHeight - 40;
-  ul.replaceChildren(
-    ...list.map((c) => {
-      const li = el('li', `cmt ${c.role === 'ai' ? 'ai' : 'user'}`);
-      const who = el('div', 'who');
-      who.append(el('b', null, ROLE[c.role] || '我'), el('span', null, fmt(c.ts)));
-      li.append(who, el('p', null, c.text));
-      return li;
-    })
-  );
-  $('#cCount').textContent = list.length ? ` ${list.length}` : '';
-  if (stick) ul.scrollTop = ul.scrollHeight;
-}
-
-async function loadComments() {
-  const f = files.find((x) => x.id === cur);
-  if (!f) {
-    cmtFor = null;
-    cmtKey = '';
-    renderComments([], true);
-    return;
+function markCurrent() {
+  for (const b of document.querySelectorAll('.row[data-id]')) {
+    if (isDetail() && b.dataset.id === route.id) b.setAttribute('aria-current', 'true');
+    else b.removeAttribute('aria-current');
   }
-  const key = f.cmts.map((c) => c.sha).join();
-  if (cmtFor === f.id && cmtKey === key) return;
-  const list = await Promise.all(
-    f.cmts.map(async (c) => {
-      try {
-        return JSON.parse(textOf(await blob(c.sha)));
-      } catch {
-        return null;
-      }
-    })
-  );
-  if (f.id !== cur) return;
-  renderComments(list.filter(Boolean), cmtFor !== f.id);
-  cmtFor = f.id;
-  cmtKey = key;
 }
 
-function select(id) {
-  cur = id;
-  history.replaceState(null, '', '#' + id);
-  renderList();
-  renderStage();
-  loadComments();
+function render(fresh) {
+  if (!TOKEN) return askToken('');
+  const r = parseHash();
+  const moved = r.name !== route.name || r.id !== route.id;
+  route = r;
+  layout();
+  if (moved) {
+    if (!noteSticky) note('');
+    if (r.name === 'conv') openConv(r.id);
+    else if (r.name === 'file') openFile(r.id);
+    else $('#mainTitle').textContent = '';
+    if (r.name !== 'conv') conv = null;
+    markCurrent();
+  }
+  sync(fresh || moved);
 }
 
-async function sync(force = false) {
-  if (!TOKEN) return;
+async function sync(force) {
+  if (!TOKEN || !$('#gate').hidden) return;
   if (busy) {
     again = true;
+    againForce ||= force;
     return;
   }
   busy = true;
   try {
-    const changed = await load(force);
-    if (!changed) return;
-    if (!files.some((f) => f.id === cur)) {
-      const hash = location.hash.slice(1);
-      cur = (files.find((f) => f.id === hash) || files[0] || {}).id || null;
-    }
-    showEmpty(files.length ? '' : '还没有文件', !files.length);
-    renderList();
-    renderStage();
-    loadComments();
+    const changed = await pull(force);
+    if (changed || force) await draw(force);
+    if (!noteSticky) note('');
   } catch (e) {
-    if (e.status === 401 || e.status === 404) {
+    if (e.status === 401) {
+      forgetToken();
+      askToken('令牌已失效，请重新填写');
+    } else if (e.status === 404) {
       try {
-        localStorage.removeItem('rv-token');
-      } catch {}
-      askToken(e.status === 401 ? '令牌已失效，请重新填写' : '令牌没有 Remote 仓库的访问权限');
-    } else $('#note').textContent = e.message;
+        await gh('');
+        $('#noneMsg').textContent = 'Mac 还没开始同步';
+        $('#convList').replaceChildren(el('li', 'loading', 'Mac 还没开始同步'));
+      } catch (x) {
+        if (x.status === 401 || x.status === 404) {
+          forgetToken();
+          askToken('令牌没有 Remote 仓库的访问权限');
+        } else note(errText(x));
+      }
+    } else note(errText(e));
   } finally {
+    banner();
     busy = false;
     if (again) {
+      const f = againForce;
       again = false;
-      sync(true);
+      againForce = false;
+      sync(f);
     }
   }
 }
+
+async function draw(force) {
+  const jobs = [];
+  if (wide.matches || !isDetail()) jobs.push(sideTab() === 'convs' ? loadConvs() : loadFiles(force));
+  if (route.name === 'conv') jobs.push(loadConv(route.id));
+  if (route.name === 'file') jobs.push(loadFile(route.id, force));
+  const res = await Promise.allSettled(jobs);
+  const bad = res.find((x) => x.status === 'rejected');
+  if (bad) throw bad.reason;
+}
+
+async function loadConvs() {
+  const d = await readJson('convs.json');
+  convs = d?.convs || [];
+  if (sideTab() !== 'convs') return;
+  const ul = $('#convList');
+  const sig = JSON.stringify(convs);
+  if (sig !== convSig || !ul.querySelector('.row')) {
+    convSig = sig;
+    if (!convs.length) ul.replaceChildren(el('li', 'loading', '还没有对话'));
+    else
+      ul.replaceChildren(
+        ...convs.map((c) => {
+          const li = el('li');
+          const b = el('button', 'row');
+          b.type = 'button';
+          b.dataset.id = c.id;
+          const line = el('span', 'line');
+          line.append(el('span', 'name', c.title));
+          const p = pill(c.status);
+          if (p) line.append(p);
+          const meta = el('span', 'meta');
+          meta.append(el('span', null, when(c.updated)));
+          if (c.files) meta.append(el('span', null, `${c.files} 个文件`));
+          b.append(line, meta);
+          b.onclick = () => go(`c/${c.id}`);
+          li.append(b);
+          return li;
+        })
+      );
+    markCurrent();
+  }
+  if (route.name === 'convs') {
+    $('#noneMsg').textContent = convs.length ? '正在加载…' : '还没有对话';
+    if (wide.matches && convs.length) location.replace(`#c/${(convs.find((c) => c.id === lastConv) || convs[0]).id}`);
+  }
+}
+
+function openConv(id) {
+  lastConv = id;
+  conv = { id, map: new Map(), more: false, capped: false, older: null, olderMore: false, shown: 0, sig: '', fresh: true };
+  $('#mainTitle').textContent = convs.find((c) => c.id === id)?.title || '对话';
+  $('#olderBox').hidden = true;
+  $('#cappedBox').hidden = true;
+  $('#convForm').hidden = false;
+  $('#rounds').replaceChildren(el('p', 'loading', '正在拉取对话内容…'));
+  const ta = $('#convForm textarea');
+  ta.value = '';
+  ta.style.height = '';
+}
+
+const pendingRounds = (id) =>
+  pending.filter((p) => p.type === 'msg' && p.convId === id).map((p) => ({ key: `p:${p.id}`, ts: p.at, ask: p.text, from: 'phone', html: '', status: 'queued' }));
+const roundsOf = (s) => [...s.map.values(), ...pendingRounds(s.id)].sort((a, b) => a.ts - b.ts);
+
+async function loadConv(id) {
+  const d = await readJson(`conv/${id}.json`);
+  const s = conv;
+  if (route.name !== 'conv' || !s || s.id !== id) return;
+  if (!d) {
+    $('#rounds').replaceChildren(el('p', 'loading', '这个对话已不在最近 10 个里'));
+    $('#convForm').hidden = true;
+    return;
+  }
+  $('#convForm').hidden = false;
+  $('#mainTitle').textContent = d.title;
+  const prevLast = roundsOf(s).at(-1)?.key;
+  for (const r of d.rounds) s.map.set(r.key, r);
+  s.more = d.more;
+  s.capped = d.capped;
+  if (s.fresh) {
+    s.fresh = false;
+    drawConv('latest');
+  } else drawConv(roundsOf(s).at(-1)?.key !== prevLast ? 'new' : 'keep');
+}
+
+function roundEl(r, isLast) {
+  const art = el('article', 'round');
+  const who = el('div', 'who');
+  who.append(el('b', null, FROM[r.from] || '我'), el('span', null, when(r.ts)));
+  const p = pill(r.status);
+  if (p) who.append(p);
+  art.append(who, el('p', 'ask', r.ask));
+  if (r.html) {
+    const ai = el('div', 'who');
+    ai.append(el('b', 'ai', 'Claude'));
+    const body = el('div', 'reply md');
+    body.innerHTML = r.html;
+    art.append(ai, body);
+    if (!isLast && r.long) {
+      const open = expanded.has(r.key);
+      if (!open) body.classList.add('clamp');
+      const t = el('button', 'toggle', open ? '收起' : '展开全文');
+      t.type = 'button';
+      t.onclick = () => {
+        if (expanded.has(r.key)) expanded.delete(r.key);
+        else expanded.add(r.key);
+        drawConv('keep');
+      };
+      art.append(t);
+    }
+  } else if (r.status && r.status !== 'done') {
+    art.append(el('p', 'wait', WAIT[r.status]));
+  }
+  return art;
+}
+
+function drawConv(mode) {
+  const s = conv;
+  if (!s || s.fresh) return;
+  const box = $('#convScroll');
+  const nearBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 60;
+  const rounds = roundsOf(s);
+  const canMore = s.older ? s.shown < s.older.length : s.more;
+  const capped = !canMore && (s.older ? s.olderMore : s.capped);
+  const sig = JSON.stringify([rounds.map((r) => [r.key, r.status, r.html.length]), canMore, capped, [...expanded]]);
+  if (mode === 'keep' && sig === s.sig) return;
+  s.sig = sig;
+  $('#olderBox').hidden = !canMore;
+  $('#cappedBox').hidden = !capped;
+  const wrap = $('#rounds');
+  if (!rounds.length) {
+    wrap.replaceChildren(el('p', 'loading', '这个对话还没有内容'));
+    return;
+  }
+  const last = rounds.length - 1;
+  wrap.replaceChildren(...rounds.map((r, i) => roundEl(r, i === last)));
+  if (mode === 'latest' || (mode === 'new' && nearBottom)) wrap.lastElementChild.scrollIntoView({ block: 'start' });
+}
+
+$('#older').onclick = async () => {
+  const s = conv;
+  if (!s) return;
+  const btn = $('#older');
+  btn.disabled = true;
+  btn.textContent = '正在拉取…';
+  try {
+    if (!s.older) {
+      const d = await readJson(`older/${s.id}.json`);
+      if (conv !== s) return;
+      s.older = d?.rounds || [];
+      s.olderMore = !!(d && (d.more || d.capped));
+    }
+    s.shown = Math.min(s.shown + STEP, s.older.length);
+    for (const r of s.older.slice(s.older.length - s.shown)) if (!s.map.has(r.key)) s.map.set(r.key, r);
+    const box = $('#convScroll');
+    const h = box.scrollHeight;
+    const top = box.scrollTop;
+    drawConv('keep');
+    box.scrollTop = top + (box.scrollHeight - h);
+  } catch (e) {
+    if (e.status === 401) {
+      forgetToken();
+      askToken('令牌已失效，请重新填写');
+    } else note(errText(e));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = OLDER;
+  }
+};
+
+async function loadFileList() {
+  const d = await readJson('files.json');
+  files = d?.files || [];
+  chips = d?.chips || [];
+}
+
+async function loadFiles(force) {
+  await loadFileList();
+  if (sideTab() !== 'files') return;
+  if (filter && filter !== 'upload' && !chips.some((c) => c.id === filter)) filter = '';
+  const shown = files.filter((f) => !filter || (filter === 'upload' ? f.origin === 'upload' : f.convs.some((c) => c.id === filter)));
+  const sig = JSON.stringify([shown, chips, filter]);
+  if (force || sig !== filesSig || !$('#fileList .row')) {
+    filesSig = sig;
+    drawFiles(shown);
+  }
+  if (route.name === 'files') {
+    $('#noneMsg').textContent = shown.length ? '正在加载…' : '没有文件';
+    if (wide.matches && shown.length) location.replace(`#f/${(shown.find((f) => f.id === lastFile) || shown[0]).id}`);
+  }
+}
+
+function drawFiles(shown) {
+  const chip = (id, label) => {
+    const b = el('button', 'chip', label);
+    b.type = 'button';
+    b.setAttribute('aria-pressed', String(filter === id));
+    b.onclick = () => {
+      filter = id;
+      loadFiles(true).catch((e) => note(errText(e)));
+    };
+    return b;
+  };
+  $('#chips').replaceChildren(chip('', '全部'), chip('upload', '手动上传'), ...chips.map((c) => chip(c.id, c.title)));
+  const ul = $('#fileList');
+  if (!shown.length) {
+    ul.replaceChildren(el('li', 'loading', '没有文件'));
+    return;
+  }
+  ul.replaceChildren(
+    ...shown.map((f) => {
+      const li = el('li');
+      const b = el('button', 'row');
+      b.type = 'button';
+      b.dataset.id = f.id;
+      const line = el('span', 'line');
+      line.append(el('span', 'name', f.name));
+      const meta = el('span', 'meta');
+      meta.append(el('span', null, KIND[f.kind] || f.kind), el('span', null, when(f.updated)));
+      if (f.comments) meta.append(el('span', null, `${f.comments} 条评论`));
+      const tags = el('span');
+      for (const t of f.origin === 'upload' ? ['手动上传'] : [...new Set(f.convs.map((c) => c.title))]) tags.append(el('span', 'tag', t));
+      b.append(line, meta, tags);
+      b.onclick = () => go(`f/${f.id}`);
+      li.append(b);
+      return li;
+    })
+  );
+  markCurrent();
+}
+
+function openFile(id) {
+  lastFile = id;
+  shownFile = '';
+  fileCmts = { id, list: [] };
+  const f = files.find((x) => x.id === id);
+  $('#mainTitle').textContent = f?.name || '文件';
+  $('#fhead').replaceChildren();
+  $('#cmts').replaceChildren(el('li', 'loading', '正在加载评论…'));
+  mountFrame(msgDoc('正在加载预览'), '');
+  const ta = $('#fileForm textarea');
+  ta.value = '';
+  ta.style.height = '';
+}
+
+function mountFrame(html, kind) {
+  const frame = $('#frame');
+  const next = frame.cloneNode(false);
+  next.setAttribute('sandbox', kind === 'html' ? 'allow-scripts allow-popups allow-popups-to-escape-sandbox' : 'allow-popups allow-popups-to-escape-sandbox');
+  next.srcdoc = html;
+  frame.replaceWith(next);
+}
+
+async function loadFile(id, force) {
+  await loadFileList();
+  if (route.name !== 'file' || route.id !== id) return;
+  const f = files.find((x) => x.id === id);
+  $('#fileForm').hidden = !f;
+  if (!f) {
+    $('#fhead').replaceChildren(el('p', 'loading', '文件不存在或已被移走'));
+    $('#cmts').replaceChildren();
+    mountFrame(msgDoc(''), '');
+    return;
+  }
+  $('#mainTitle').textContent = f.name;
+  const tags = el('div');
+  if (f.origin === 'upload') tags.append(el('span', 'tag', '手动上传'));
+  else for (const t of new Set(f.convs.map((c) => c.title))) tags.append(el('span', 'tag', `来自 ${t}`));
+  const meta = el('div', 'meta');
+  meta.append(el('span', null, `${when(f.updated)} 修改`));
+  if (f.path) meta.append(el('span', 'fpath', f.path));
+  $('#fhead').replaceChildren(tags, meta);
+  const ver = `${f.id}:${f.rev}`;
+  if (force || shownFile !== ver) {
+    shownFile = ver;
+    readText(`view/${f.id}.html`)
+      .then((html) => {
+        if (route.name === 'file' && route.id === id) mountFrame(html ?? msgDoc('文件较大，请在 Mac 上查看'), f.kind);
+      })
+      .catch((e) => {
+        shownFile = '';
+        if (e.status !== 401) note('预览加载失败，点刷新重试');
+      });
+  }
+  const d = await readJson(`comments/${id}.json`);
+  if (route.name !== 'file' || route.id !== id) return;
+  fileCmts = { id, list: d?.comments || [] };
+  drawComments(id);
+}
+
+function drawComments(id) {
+  if (fileCmts.id !== id) return;
+  const list = [...fileCmts.list, ...pending.filter((p) => p.type === 'comment' && p.fileId === id).map((p) => ({ role: 'user', text: p.text, ts: p.at, status: 'queued' }))];
+  const ul = $('#cmts');
+  if (!list.length) {
+    ul.replaceChildren(el('li', 'loading', '还没有评论'));
+    return;
+  }
+  ul.replaceChildren(
+    ...list.map((c) => {
+      const li = el('li', 'cmt');
+      const who = el('div', 'who');
+      who.append(el('b', c.role === 'ai' ? 'ai' : null, c.role === 'ai' ? 'Claude' : '我'), el('span', null, when(c.ts)));
+      const p = c.role === 'user' ? pill(c.status) : null;
+      if (p) who.append(p);
+      li.append(who, el('p', null, c.text));
+      return li;
+    })
+  );
+}
+
+function wireForm(form, submit) {
+  const ta = form.querySelector('textarea');
+  const btn = form.querySelector('button');
+  ta.addEventListener('input', () => {
+    ta.style.height = '';
+    ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`;
+  });
+  ta.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) form.requestSubmit();
+  });
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const text = ta.value.trim();
+    if (!text || btn.disabled) return;
+    btn.disabled = true;
+    btn.textContent = '发送中';
+    try {
+      await submit(text, route.id);
+      ta.value = '';
+      ta.style.height = '';
+    } catch (err) {
+      if (err.status === 401) {
+        forgetToken();
+        askToken('令牌已失效，请重新填写');
+      } else note(`发送失败：${errText(err)}`, true);
+    }
+    btn.disabled = false;
+    btn.textContent = '发送';
+  };
+}
+
+wireForm($('#convForm'), async (text, id) => {
+  const pid = newId();
+  await commitInbox([{ path: `inbox/${pid}.json`, b64: jsonB64({ type: 'msg', convId: id, text }) }], '手机消息');
+  pending.push({ id: pid, type: 'msg', convId: id, text, at: Date.now() });
+  if (conv?.id === id) {
+    drawConv('keep');
+    $('#rounds').lastElementChild?.scrollIntoView({ block: 'start' });
+  }
+});
+wireForm($('#fileForm'), async (text, id) => {
+  const pid = newId();
+  await commitInbox([{ path: `inbox/${pid}.json`, b64: jsonB64({ type: 'comment', fileId: id, text }) }], '手机评论');
+  pending.push({ id: pid, type: 'comment', fileId: id, text, at: Date.now() });
+  drawComments(id);
+  $('#cmts').lastElementChild?.scrollIntoView({ block: 'end' });
+});
 
 function cleanName(raw) {
   let n = String(raw || '')
@@ -470,137 +916,118 @@ function cleanName(raw) {
   if (n.length > 120) n = n.slice(0, 120 - ext.length) + ext;
   return n;
 }
-const typeOf = (name) => TYPES[(name.split('.').pop() || '').toLowerCase()];
 
 async function upload(list) {
-  const note = $('#note');
-  note.textContent = '';
   const errors = [];
   const entries = [];
-  const done = [];
-  let last = null;
-  try {
-    await load(true);
-  } catch (e) {
-    note.textContent = e.message;
-    return;
-  }
+  const items = [];
   for (const file of list) {
     const name = cleanName(file.name);
-    const type = name.includes('.') && typeOf(name);
-    if (!type) errors.push(`${name}：仅支持 md、html 和图片`);
+    const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
+    if (!EXTS.has(ext)) errors.push(`${name}：仅支持 md、html 和图片`);
     else if (!file.size) errors.push(`${name}：文件为空`);
     else if (file.size > MAX_FILE) errors.push(`${name}：文件超过 20MB`);
-    else if (done.includes(name)) continue;
     else {
-      const old = files.find((x) => x.name === name);
-      const id = old?.id || rand(5);
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      entries.push({ path: `docs/${id}/data`, b64: toB64(bytes) });
-      entries.push({ path: `docs/${id}/meta.json`, b64: jsonB64({ name, kind: type[0], mime: type[1], rev: (old?.rev || 0) + 1, updated: Date.now() }) });
-      done.push(name);
-      last = id;
+      const id = newId();
+      const bin = `inbox/${id}.bin`;
+      entries.push({ path: bin, b64: toB64(new Uint8Array(await file.arrayBuffer())) });
+      entries.push({ path: `inbox/${id}.json`, b64: jsonB64({ type: 'upload', name, blob: bin }) });
+      items.push({ id, type: 'upload', name, at: Date.now() });
     }
   }
-  const btn = $('#btnUpload');
-  if (entries.length) {
+  const btn = $('#upload');
+  if (items.length) {
     btn.disabled = true;
     btn.textContent = '上传中';
     try {
-      await commit(entries, `上传 ${done.join('、')}`);
-      cur = last;
-      history.replaceState(null, '', '#' + last);
-      panel('');
+      await commitInbox(entries, '手机上传');
+      pending.push(...items);
+      upBatch = { ids: new Set(items.map((x) => x.id)), last: '' };
+      $('#upHint').textContent = `已上传 ${items.length} 个文件，等待 Mac 接收`;
     } catch (e) {
-      errors.push(`上传失败：${e.message}`);
+      if (e.status === 401) {
+        forgetToken();
+        askToken('令牌已失效，请重新填写');
+      } else errors.push(`上传失败：${errText(e)}`);
     }
     btn.disabled = false;
     btn.textContent = '上传文件';
   }
-  note.textContent = errors.join('\n');
-  await sync(true);
+  note(errors.join('\n'), true);
 }
 
-$('#btnFiles').onclick = () => togglePanel('files');
-$('#btnComments').onclick = () => togglePanel('comments');
-$('#btnUpload').onclick = () => $('#picker').click();
-$('#btnPick').onclick = () => $('#picker').click();
-$('#btnToken').onclick = () => askToken('');
+$('#rounds').addEventListener('click', (e) => {
+  const a = e.target.closest('a[href]');
+  if (!a) return;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+});
+$('#gateForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const v = $('#key').value.trim();
+  if (!v) return;
+  const btn = e.currentTarget.querySelector('button');
+  btn.disabled = true;
+  $('#gateNote').textContent = '';
+  TOKEN = v;
+  try {
+    await gh('');
+    try {
+      localStorage.setItem('rv-token', v);
+    } catch {}
+    $('#key').value = '';
+    $('#gate').hidden = true;
+    head = '';
+    refTag = '';
+    route = { name: '', id: '' };
+    render(true);
+  } catch (err) {
+    TOKEN = '';
+    $('#gateNote').textContent = err.status === 401 ? '令牌无效' : err.status === 404 ? '令牌没有 Remote 仓库的访问权限' : errText(err);
+  }
+  btn.disabled = false;
+};
+$('#btnToken').onclick = () => {
+  forgetToken();
+  askToken('');
+};
+$('#back').onclick = () => go(route.name === 'file' ? 'files' : '');
+for (const b of document.querySelectorAll('[data-refresh]')) {
+  b.onclick = async () => {
+    for (const x of document.querySelectorAll('[data-refresh]')) x.disabled = true;
+    shownFile = '';
+    convSig = '';
+    filesSig = '';
+    if (conv) conv.sig = '';
+    await sync(true);
+    for (const x of document.querySelectorAll('[data-refresh]')) x.disabled = false;
+  };
+}
+for (const b of document.querySelectorAll('.tabs button')) {
+  b.onclick = () => {
+    const toFiles = b.dataset.tab === 'files';
+    if (wide.matches && toFiles && lastFile) return go(`f/${lastFile}`);
+    if (wide.matches && !toFiles && lastConv) return go(`c/${lastConv}`);
+    go(toFiles ? 'files' : '');
+  };
+}
+$('#upload').onclick = () => $('#picker').click();
 $('#picker').onchange = (e) => {
   const list = [...e.target.files];
   e.target.value = '';
-  if (list.length && TOKEN) upload(list);
-};
-$('#btnRefresh').onclick = async (e) => {
-  const btn = e.currentTarget;
-  btn.disabled = true;
-  shown = null;
-  cmtFor = null;
-  await sync(true);
-  btn.disabled = false;
+  if (list.length) upload(list);
 };
 
-$('#tokenForm').onsubmit = async (e) => {
-  e.preventDefault();
-  const value = $('#tokenInput').value.trim();
-  if (!value) return;
-  const btn = e.currentTarget.querySelector('button');
-  btn.disabled = true;
-  $('#tokenNote').textContent = '';
-  TOKEN = value;
-  try {
-    await gh(`/git/ref/heads/${BRANCH}`);
-    try {
-      localStorage.setItem('rv-token', value);
-    } catch {}
-    $('#tokenInput').value = '';
-    $('#tokenForm').hidden = true;
-    await sync(true);
-  } catch (err) {
-    TOKEN = '';
-    $('#tokenNote').textContent = err.status === 401 ? '令牌无效' : err.status === 404 ? '令牌没有 Remote 仓库的访问权限' : err.message;
-  }
-  btn.disabled = false;
-};
-
-$('#cmtForm').onsubmit = async (e) => {
-  e.preventDefault();
-  const ta = $('#cmtText');
-  const text = ta.value.trim();
-  if (!text || !cur) return;
-  if (text.length > MAX_COMMENT) {
-    $('#note').textContent = `评论不能超过 ${MAX_COMMENT} 字`;
-    return;
-  }
-  const btn = e.currentTarget.querySelector('button');
-  btn.disabled = true;
-  btn.textContent = '发送中';
-  try {
-    const ts = Date.now();
-    await commit([{ path: `comments/${cur}/${ts}-${rand(2)}.json`, b64: jsonB64({ role: 'user', text, ts }) }], '评论');
-    ta.value = '';
-    await sync(true);
-  } catch (err) {
-    $('#note').textContent = `发送失败：${err.message}`;
-    panel('files');
-  }
-  btn.textContent = '发送';
-  btn.disabled = !cur;
-};
-$('#cmtText').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) $('#cmtForm').requestSubmit();
-});
-
-let dragDepth = 0;
+let depth = 0;
 const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes('Files');
 addEventListener('dragenter', (e) => {
   if (!hasFiles(e) || !TOKEN) return;
-  dragDepth += 1;
+  depth += 1;
   app.classList.add('drag');
 });
 addEventListener('dragleave', () => {
-  dragDepth = Math.max(0, dragDepth - 1);
-  if (!dragDepth) app.classList.remove('drag');
+  depth = Math.max(0, depth - 1);
+  if (!depth) app.classList.remove('drag');
 });
 addEventListener('dragover', (e) => {
   if (hasFiles(e)) e.preventDefault();
@@ -608,24 +1035,23 @@ addEventListener('dragover', (e) => {
 addEventListener('drop', (e) => {
   if (!hasFiles(e)) return;
   e.preventDefault();
-  dragDepth = 0;
+  depth = 0;
   app.classList.remove('drag');
   if (TOKEN) upload([...e.dataTransfer.files]);
 });
 
+addEventListener('hashchange', () => render(false));
+wide.addEventListener('change', () => {
+  layout();
+  sync(true);
+});
 setInterval(() => {
-  if (!document.hidden) sync();
-}, 15000);
+  if (!document.hidden) sync(false);
+}, POLL_MS);
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) sync();
+  if (!document.hidden) sync(false);
 });
-addEventListener('hashchange', () => {
-  const id = location.hash.slice(1);
-  if (id !== cur && files.some((f) => f.id === id)) select(id);
-});
-
-if (TOKEN) sync(true);
-else askToken('');
+render(true);
 </script>
 </body>
 </html>
