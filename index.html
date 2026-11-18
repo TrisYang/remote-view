@@ -34,7 +34,13 @@ button{cursor:pointer}
 .side-body{order:2;flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
 .side-foot{display:flex;gap:16px;padding:12px 16px 16px}
 .side-foot button{height:32px;padding:0;border:0;background:transparent;font-size:12px;color:var(--mute)}
-.side-foot button[aria-pressed="false"]{color:var(--warn)}
+.switch{display:flex;align-items:center;gap:8px;flex:none;order:1;padding:8px 16px;border-bottom:.5px solid var(--line);background:var(--panel)}
+.switch span{flex:1;min-width:0;font-size:12px;color:var(--mute)}
+.switch span.on{color:var(--ok)}
+.switch span.off{color:var(--warn)}
+.switch button{flex:none;height:28px;padding:0 12px;border:.5px solid var(--edge);border-radius:14px;background:var(--panel);font-size:12px;color:var(--mute)}
+.switch button:disabled{opacity:.5}
+.switch button[data-next="on"]{border-color:var(--accent);color:var(--accent)}
 
 .list{margin:0;padding:0;list-style:none}
 .row{display:block;width:100%;padding:10px 16px;border:0;border-bottom:.5px solid var(--line);background:transparent;text-align:left}
@@ -158,6 +164,10 @@ textarea{flex:1;min-width:0;max-height:160px;padding:8px 10px;border:.5px solid 
       <h1 id="sideTitle">最近对话</h1>
       <button class="icon" type="button" data-refresh>刷新</button>
     </header>
+    <div class="switch">
+      <span id="remoteState" aria-live="polite">正在读取开关状态…</span>
+      <button type="button" id="btnRemote" disabled>切换</button>
+    </div>
     <nav class="tabs" id="tabs">
       <button type="button" data-tab="convs">对话</button>
       <button type="button" data-tab="files">文件</button>
@@ -169,7 +179,7 @@ textarea{flex:1;min-width:0;max-height:160px;padding:8px 10px;border:.5px solid 
         <div class="chips" id="chips" role="group" aria-label="按对话筛选"></div>
         <ul class="list" id="fileList"><li class="loading">正在加载…</li></ul>
       </section>
-      <div class="side-foot"><button type="button" id="btnRemote"></button><button type="button" id="btnToken">更换令牌</button></div>
+      <div class="side-foot"><button type="button" id="btnToken">更换令牌</button></div>
     </div>
   </aside>
 
@@ -994,12 +1004,18 @@ $('#gateForm').onsubmit = async (e) => {
   btn.disabled = false;
 };
 function drawRemote() {
+  const on = remoteOn !== false;
+  const state = $('#remoteState');
+  state.textContent = on ? '远程开启中' : '远程已关闭';
+  state.className = on ? 'on' : 'off';
   const b = $('#btnRemote');
-  b.textContent = remoteOn ? '远程已开启' : '远程已关闭';
-  b.setAttribute('aria-pressed', String(remoteOn));
-  for (const f of document.querySelectorAll('.compose')) f.hidden = !remoteOn;
+  b.textContent = on ? '关闭' : '开启';
+  b.dataset.next = on ? 'off' : 'on';
+  b.disabled = false;
+  b.setAttribute('aria-pressed', String(on));
+  for (const f of document.querySelectorAll('.compose')) f.hidden = !on;
   const g = document.getElementById('offTip');
-  if (g) g.hidden = remoteOn;
+  if (g) g.hidden = on;
 }
 
 $('#btnRemote').onclick = async () => {
